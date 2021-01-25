@@ -18,12 +18,27 @@ class PlotPredictions(tf.keras.callbacks.Callback):
         _compose_prediction_image(self.model, 
                                   self.dataset_iter, 
                                   self.num_img, epoch)
-        plt.show()
+        plt.show(blocking=False)
         plt.close()
 
 
 class TensorBoard(tf.keras.callbacks.Callback):
 
+    """
+    Simplified version of the tf.keras.callbacks.Tensorboard that only:
+        - Plots losses after each training batch
+        - Writes the predictions to Tensorboard with a nice looking image
+
+    Parameters
+    ----------
+    images_dataset: tf.data.Dataset
+        Dataset that returns pairs of images of the same size (input and target)
+    logdir: str, default 'logs'
+        Tensorboard logs directory
+    num_img: int, default 4
+        Number of images to plot after every epoch coming from the given 
+        images_dataset.
+    """
     def __init__(self, 
                  images_dataset: tf.data.Dataset,
                  logdir: str = 'logs',
