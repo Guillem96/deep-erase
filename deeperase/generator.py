@@ -13,6 +13,77 @@ _SUPPORTED_MODELS = '\n'.join(f'- {o}'
 
 ################################################################################
 
+def build_unet(
+        input_shape: Union[Tuple[int, int, int], tf.TensorShape],
+        backbone: str,
+        n_channels: int,
+        activation: str = 'sigmoid',
+        decoder_filters: Sequence[int] = (256, 128, 64, 32, 16),
+        use_batchnorm: bool = True, 
+        upsample_strategy: str = 'upsample',
+        freeze_backbone: bool = False,
+        weights: Optional[str] = None,
+        name: Optional[str] = None) -> tf.keras.Model:
+    f"""
+    Builds a modified version of the UNet described on 
+    "U-Net: Convolutional Networks for Biomedical Image Segmentation"
+    (https://arxiv.org/abs/1505.04597)
+    Parameters
+    ----------
+    input_shape : tuple or tf.TensorShape
+        Shape of the input tensor without the batch dimension.
+        Image format should be: Height, Width, # Channels
+    backbone: str
+        Neural Network architecture to use as a backbone. As now we support:
+        {_SUPPORTED_MODELS}
+    n_channels: int
+        Channels of the las convolution.
+    activation: str
+        Activation of the last convolution
+    decoder_filters: Sequence[int], default (256, 128, 64, 32, 16)
+        Decoder is composed of five layers. This is the convolutional filters
+        used in each decoder layer.
+    use_batchnorm: bool, default True
+        Whether to use Batch Normalization after convolutions or not.
+    upsample_strategy: default 'upsample'
+        Method to upsample feature maps in the decoder. It can either be:
+         - "upsample": Uses nearest interpolation to upsample feature maps.
+         - "conv": Uses Transposed convs to upsample the feature maps.
+    freeze_backbone : bool
+        Whether or not backbone layers should be trainable or not (frozen).
+    """
+    if len(decoder_filters) != 5:
+            raise ValueError("Decoder has 5 layers."
+                             f"You specified {len(decoder_filters)} filters")
+
+    input_tensor = tf.keras.Input(input_shape)
+
+    backbone = backbones.build_unet_backbone(name=backbone,
+                                             input_tensor=input_tensor,
+                                             n_levels=5,
+                                             weights=weights)
+
+    if freeze_backbone:
+        for layer in backbone.layers:
+            layer.trainable = False
+
+    decoders = [_DecoderBlock(filters=f, 
+                              use_batchnorm=use_batchnorm,
+                              upsample_strategy=upsample_strategy,
+                              name=f'decoder_{i}')
+                for i, f in enumerate(decoder_filters, start=1)]
+
+    out = _unet_forward(input_tensor, 
+                        backbone=backbone, 
+                        decoders=decoders, 
+                        n_channels=n_channels, 
+                        activation=activation)
+
+    return tf.keras.Model(input_tensor, out, name=name)
+
+
+################################################################################
+
 class _Conv3x3BnReLU(tf.keras.layers.Layer):
 
     def __init__(self, 
@@ -116,77 +187,6 @@ class _DecoderBlock(tf.keras.layers.Layer):
             x = tf.concat([x, residual], axis=-1)
 
         return self.conv(x)
-
-
-################################################################################
-
-def build_unet(
-        input_shape: Union[Tuple[int, int, int], tf.TensorShape],
-        backbone: str,
-        n_channels: int,
-        activation: str = 'sigmoid',
-        decoder_filters: Sequence[int] = (256, 128, 64, 32, 16),
-        use_batchnorm: bool = True, 
-        upsample_strategy: str = 'upsample',
-        freeze_backbone: bool = False,
-        weights: Optional[str] = None,
-        name: Optional[str] = None) -> tf.keras.Model:
-    f"""
-    Builds a modified version of the UNet described on 
-    "U-Net: Convolutional Networks for Biomedical Image Segmentation"
-    (https://arxiv.org/abs/1505.04597)
-    Parameters
-    ----------
-    input_shape : tuple or tf.TensorShape
-        Shape of the input tensor without the batch dimension.
-        Image format should be: Height, Width, # Channels
-    backbone: str
-        Neural Network architecture to use as a backbone. As now we support:
-        {_SUPPORTED_MODELS}
-    n_channels: int
-        Channels of the las convolution.
-    activation: str
-        Activation of the last convolution
-    decoder_filters: Sequence[int], default (256, 128, 64, 32, 16)
-        Decoder is composed of five layers. This is the convolutional filters
-        used in each decoder layer.
-    use_batchnorm: bool, default True
-        Whether to use Batch Normalization after convolutions or not.
-    upsample_strategy: default 'upsample'
-        Method to upsample feature maps in the decoder. It can either be:
-         - "upsample": Uses nearest interpolation to upsample feature maps.
-         - "conv": Uses Transposed convs to upsample the feature maps.
-    freeze_backbone : bool
-        Whether or not backbone layers should be trainable or not (frozen).
-    """
-    if len(decoder_filters) != 5:
-            raise ValueError("Decoder has 5 layers."
-                             f"You specified {len(decoder_filters)} filters")
-
-    input_tensor = tf.keras.Input(input_shape)
-
-    backbone = backbones.build_unet_backbone(name=backbone,
-                                             input_tensor=input_tensor,
-                                             n_levels=5,
-                                             weights=weights)
-
-    if freeze_backbone:
-        for layer in backbone.layers:
-            layer.trainable = False
-
-    decoders = [_DecoderBlock(filters=f, 
-                              use_batchnorm=use_batchnorm,
-                              upsample_strategy=upsample_strategy,
-                              name=f'decoder_{i}')
-                for i, f in enumerate(decoder_filters, start=1)]
-
-    out = _unet_forward(input_tensor, 
-                        backbone=backbone, 
-                        decoders=decoders, 
-                        n_channels=n_channels, 
-                        activation=activation)
-
-    return tf.keras.Model(input_tensor, out, name=name)
 
 
 def _unet_forward(x: tf.Tensor,

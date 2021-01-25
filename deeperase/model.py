@@ -11,6 +11,7 @@ _DEFAULT_CONTENT_LOSS = tf.losses.MeanSquaredError(
 
 _DEFAULT_ADVERSARIAL_LOSS = tf.losses.BinaryCrossentropy()
 
+
 ################################################################################
 
 class DeepErase(tf.keras.Model):

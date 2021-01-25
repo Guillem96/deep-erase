@@ -3,27 +3,12 @@ from typing import Tuple, Union, Optional
 import tensorflow as tf
 
 
+################################################################################
+
 _KERNEL_INITIALIZER = tf.initializers.RandomNormal(0, .02)
 
 
-def _conv_bn(x: tf.Tensor, 
-             filters: int, 
-             activation: tf.keras.layers.Activation, 
-             kernel_size: Tuple[int, int] = (3, 3), 
-             strides: Tuple[int, int] = (2, 2),
-             padding: str = "same",
-             kernel_initializer=_KERNEL_INITIALIZER):
-
-    x = tf.keras.layers.Conv2D(filters, kernel_size, strides=strides,
-                                kernel_initializer=kernel_initializer,
-                                padding=padding, use_bias=False)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-
-    if activation:
-        x = activation(x)
-
-    return x
-
+################################################################################
 
 def build_discriminator(
       input_shape: Union[Tuple[int, int, int], tf.TensorShape],
@@ -88,3 +73,24 @@ def build_discriminator(
                                activation='sigmoid')(x)
 
     return tf.keras.Model(inputs=[inp, tar], outputs=x, name=name)
+
+
+################################################################################
+
+def _conv_bn(x: tf.Tensor, 
+             filters: int, 
+             activation: tf.keras.layers.Activation, 
+             kernel_size: Tuple[int, int] = (3, 3), 
+             strides: Tuple[int, int] = (2, 2),
+             padding: str = "same",
+             kernel_initializer=_KERNEL_INITIALIZER):
+
+    x = tf.keras.layers.Conv2D(filters, kernel_size, strides=strides,
+                                kernel_initializer=kernel_initializer,
+                                padding=padding, use_bias=False)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+
+    if activation:
+        x = activation(x)
+
+    return x
