@@ -1,5 +1,7 @@
 import click
+from pathlib import Path
 from typing import Tuple
+from datetime import datetime
 
 import matplotlib.pyplot as plt
 
@@ -27,6 +29,7 @@ def _show_batch(input_images: tf.Tensor, target_images: tf.Tensor):
         i += 2
 
     plt.show()
+    plt.close()
 
 
 def _build_model(input_shape: Tuple[int, int, int], 
@@ -56,19 +59,42 @@ def _build_model(input_shape: Tuple[int, int, int],
 
 
 @click.command()
-@click.option('-i', '--input-pattern', required=True)
-@click.option('-t', '--target-pattern', required=True)
-@click.option('--gan/--no-gan', default=False)
+@click.option('-i', '--input-pattern', required=True,
+              help='Glob pattern to list all input images. '
+                   'Example: "data/noised/*.jpg"')
+@click.option('-t', '--target-pattern', required=True,
+              help='Glob pattern to list all target images. Input - target '
+                   'pairs of images match by filename.'
+                   'Example: "data/clean/*.jpg"')
+@click.option('--gan/--no-gan', default=False, 
+              help='If this flag is set to True, then the DeepEraser model '
+                   'will use a discriminator alongside an adversarial loss ' 
+                   'to improve the generated images. Otherwise, the model will '
+                   'only consist of U-Net generator')
 
-@click.option('--logdir', type=click.Path(file_okay=False), default='logs')
+@click.option('--logdir', type=click.Path(file_okay=False), default='logs',
+              help='Tensorboard logdir. The script creates a subfolder with '
+                   'the current datetime to differentiate experiments.')
 
-@click.option('--epochs', default=50, type=int)
-@click.option('--batch-size', default=64, type=int)
+@click.option('--epochs', default=50, type=int, 
+              help='Times to cycle through all the dataset at training time.')
+@click.option('--batch-size', default=64, type=int,
+              help='Dataset batch size.')
+
+@click.option('--resume', type=click.Path(file_okay=False), default=None,
+              help='Start training from an existing model checkpoint')
+@click.option('--checkpoint-dir', type=click.Path(file_okay=False), 
+              default='models/deeperase',
+              help='Directory to save model checkpoint after every epoch')
 def train(input_pattern: str, target_pattern: str, 
           logdir: str,
           gan: bool, 
-          epochs: int,
-          batch_size: int):
+          epochs: int, batch_size: int,
+          resume: str, checkpoint_dir: str):
+
+    # Create logdir subdirectory
+    logdir_suffix = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+    logdir = Path(logdir) / logdir_suffix
 
     image_size = (64, 256)
     train_ds, test_ds = deeperase.data.build_dataset(input_pattern,
@@ -82,14 +108,15 @@ def train(input_pattern: str, target_pattern: str,
     model = _build_model(image_size + (3,), gan)
     model.summary()
 
-    model.fit(train_ds.batch(batch_size).take(2), 
+    if resume is not None:
+        model.load_weights(resume)
+
+    model.fit(train_ds.batch(batch_size), 
               epochs=epochs, 
               callbacks=[
-                  deeperase.callbacks.PlotPredictions(test_ds, 4),
                   deeperase.callbacks.TensorBoard(logdir=logdir,
                                                   images_dataset=test_ds),
-                  tf.keras.callbacks.ModelCheckpoint(
-                        filepath='./models/deeperase')])
+                  tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_dir)])
 
 
 if __name__ == '__main__':

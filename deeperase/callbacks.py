@@ -9,7 +9,19 @@ import tensorflow as tf
 ################################################################################
 
 class PlotPredictions(tf.keras.callbacks.Callback):
+    """
+    After every epoch, plots the model predictions using matplotlib.
+    Be aware that this callback is blocking, meaning that 
+    training won't continue if you do not close the graphics window.
 
+    Parameters
+    ----------
+    dataset: tf.data.Dataset
+        Dataset that returns pairs of images of the same size (input and target)
+    num_img: int, default 4
+        Number of images to plot after every epoch coming from the given 
+        images_dataset.
+    """
     def __init__(self, dataset: tf.data.Dataset, num_img: int = 4):
         self.num_img = num_img
         self.dataset_iter = iter(dataset.repeat())
@@ -18,8 +30,7 @@ class PlotPredictions(tf.keras.callbacks.Callback):
         _compose_prediction_image(self.model, 
                                   self.dataset_iter, 
                                   self.num_img, epoch)
-        plt.show(blocking=False)
-        plt.close()
+        plt.show()
 
 
 class TensorBoard(tf.keras.callbacks.Callback):
@@ -44,7 +55,7 @@ class TensorBoard(tf.keras.callbacks.Callback):
                  logdir: str = 'logs',
                  num_img: int = 4):
 
-        self.writer = tf.summary.create_file_writer(logdir,
+        self.writer = tf.summary.create_file_writer(str(logdir),
                                                     flush_millis=5000)
         self.step = 0
 
@@ -78,7 +89,7 @@ def _compose_prediction_image(model: tf.keras.Model,
                               n_samples: int,
                               epoch: int):
 
-    _, ax = plt.subplots(4, 2, figsize=(12, 12))
+    _, ax = plt.subplots(self.num_img, 2, figsize=(12, 12))
 
     plt.suptitle(f'Epoch {epoch}')
     samples = [next(dataset) for _ in range(n_samples)]
@@ -97,6 +108,8 @@ def _compose_prediction_image(model: tf.keras.Model,
 
 
 def _plot_to_image():
+    # Converts the current matplotlib context to a tf.Tensor containing the
+    # figure as an RGBA image
     buf = io.BytesIO()
     plt.savefig(buf, format='png')
     plt.close()
