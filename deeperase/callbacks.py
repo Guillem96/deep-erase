@@ -81,6 +81,11 @@ class TensorBoard(tf.keras.callbacks.Callback):
         with self.writer.as_default():
             tf.summary.image("Predictions", _plot_to_image(), step=epoch)
 
+    def on_test_end(self, logs: Mapping[str, float] = None):
+        with self.writer.as_default():
+            for k, v in logs.items():
+                tf.summary.scalar(f'valid/{k}', v, step=self.step)
+
 
 ################################################################################
 
@@ -89,7 +94,7 @@ def _compose_prediction_image(model: tf.keras.Model,
                               n_samples: int,
                               epoch: int):
 
-    _, ax = plt.subplots(self.num_img, 2, figsize=(12, 12))
+    _, ax = plt.subplots(n_samples, 2, figsize=(12, 12))
 
     plt.suptitle(f'Epoch {epoch}')
     samples = [next(dataset) for _ in range(n_samples)]

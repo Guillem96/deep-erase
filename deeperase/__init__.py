@@ -1,3 +1,5 @@
+__version__ = '0.1'
+
 from deeperase.model import DeepErase
 from deeperase.generator import build_unet
 from deeperase.discriminator import build_discriminator

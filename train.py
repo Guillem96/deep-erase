@@ -39,6 +39,7 @@ def _build_model(input_shape: Tuple[int, int, int],
                                 backbone='mobilenetv2', 
                                 n_channels=3, 
                                 activation='sigmoid',
+                                upsample_strategy='conv',
                                 name='unet_generator')
     unet_optimizer = tf.optimizers.Adam(learning_rate=2e-4, beta_1=.5)
 
@@ -112,7 +113,8 @@ def train(input_pattern: str, target_pattern: str,
         model.load_weights(resume)
 
     model.fit(train_ds.batch(batch_size), 
-              epochs=epochs, 
+              epochs=epochs,
+              validation_data=test_ds.batch(batch_size),
               callbacks=[
                   deeperase.callbacks.TensorBoard(logdir=logdir,
                                                   images_dataset=test_ds),
