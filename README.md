@@ -42,7 +42,7 @@ de.fit(train_ds.batch(64), epochs=50,
 
 ## Prediction examples
 
-
+![](images/predictions.png)
 
 ## Authors
 
