@@ -32,10 +32,10 @@ AUTHORS += "Josep Pon Farreny (https://github.com/jponf)"
 EMAILS = ""
 
 # Short description
-DESCRIPTION = "This repository contains the implementation of the de-noising "
-              "model described in \"DeepErase: Weakly Supervised Ink Artifact "
-              "Removal in Document Text Images\" "
-              "(https://arxiv.org/abs/1910.07070)."
+DESCRIPTION = ("This repository contains the implementation of the de-noising "
+               "model described in \"DeepErase: Weakly Supervised Ink Artifact "
+               "Removal in Document Text Images\" "
+               "(https://arxiv.org/abs/1910.07070).")
 
 # Long description
 with open("README.md", "rt") as f:
